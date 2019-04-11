@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 
 ### macOS template
 # General
@@ -85,11 +84,6 @@ fabric.properties
 
 
 ### Python template
-=======
-.DS_Store 
-*/.DS_Store 
-
->>>>>>> 14904ede756dba06d2ce8faaba57ffe26b67c6f1
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -106,10 +100,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-<<<<<<< HEAD
-=======
-lib/
->>>>>>> 14904ede756dba06d2ce8faaba57ffe26b67c6f1
 lib64/
 parts/
 sdist/
@@ -197,7 +187,4 @@ venv.bak/
 
 # mypy
 .mypy_cache/
-<<<<<<< HEAD
 
-=======
->>>>>>> 14904ede756dba06d2ce8faaba57ffe26b67c6f1
