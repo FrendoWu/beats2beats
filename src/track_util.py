@@ -31,7 +31,7 @@ def track_to_matrix(track):
             time = time + event.tick
             output = [time, event.data[0], 0]
             outputs.append(output)
-            pass
+           
     return outputs
 
 def matrix_to_track(matrix, program=0):
