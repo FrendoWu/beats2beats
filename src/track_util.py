@@ -140,7 +140,6 @@ def set_program(track, channel=0, value=0):
             midi.ProgramChangeEvent(channel=channel, data=[value])
         track.insert(0, ProgramChangeEvent)   
         return track
-
     else:
         # is drum
         ProgramChangeEvent = \
