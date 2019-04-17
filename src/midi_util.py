@@ -154,9 +154,12 @@ def demo():
     pat = set_resolution(pat, resolution)
     pat = set_tempo(pat, bpm)
     pat = set_time_signature(pat, time_signature)
+    pat[0].append(midi.EndOfTrackEvent(tick=0, data=[]))
 
-    pat[1] = set_program(pat[1], channel=program[0], value=40)
+    pat[1] = set_program(pat[1], channel=program[0], value=program[1])
     pat[1] = set_note(pat[1], note)
+
+    # print(pattern[0])
 
     save_midfile(pat, "../test_std_Stan.mid")
 
