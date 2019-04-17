@@ -2,24 +2,35 @@ import sys
 import midi
 import numpy as np
 import pandas as pd 
-from util import cal_var
-from midi_util import save_midfile, read_midifile
+from util import _cal_var, _read_general_midi
+
+def get_program_drum(track):
+    '''
+    从打击乐track中提取乐器表
+    '''
+    program = set()
+    for event in track:
+        if isinstance(event, midi.NoteOnEvent) or isinstance(event, midi.NoteOffEvent):
+            try:
+                program.add(event.data[0])
+            except AttributeError:
+                pass
+    return list(program)
 
 def get_channel_program(track):
     """
     得到Track的ProgramChangeEvent中的channel和program
     """
+    idx, program = _read_general_midi()
     for event in track:
         if isinstance(event, midi.ProgramChangeEvent):
+            if event.channel == 9:
+                print("Channel - 9(not in GM): Percussion")
+                # print(get_program_drum(track))
+            else:
+                print("Channel - " + str(event.channel) + \
+                    ": " + program[idx.index(event.data[0])])
             return [event.channel, event.data[0]]
-
-def get_tempo(track):
-    '''
-    遍历track, 通过midi.SetTempoEvent得到tempo
-    '''
-    for event in track:
-        if isinstance(event, midi.SetTempoEvent): 
-            return event.get_bpm()
 
 def track_to_matrix(track):
     """
@@ -33,7 +44,7 @@ def track_to_matrix(track):
         exit
     
     channel, program = get_channel_program(track)
-    tempo = get_tempo(track)
+    tempo = _get_tempo(track)
     outputs = []
     time = 0
     for event in track:
@@ -110,47 +121,94 @@ def find_pattern(matrix):
     tmp = 0
     for i in range(1,len(freq)):
         res = freq[i:] - freq[:-i] # 位移
-        idx = cal_var(res)
+        idx = _cal_var(res)
         if idx > tmp and idx % 2 == 0:
             tmp = idx
     return matrix[:tmp]
 
-def change_program(track, value):
+
+def set_program(track, channel=0, value=0):
     """
-    修改一个Track的音色
-    value是一个二元组[isDrum, program]
+    设置一个自己写的Track的音色
+    value是音色
+    对于Percussion, value没有意义, 随便输
     """
 
-    #添加了打击乐的情况
-    if not value[0]:
-        for idx, event in enumerate(track):
-            if isinstance(event, midi.ProgramChangeEvent):
-                track[idx].data[0] = value[1]
-                break
+    if channel != 9:
+        # is not drum
+        ProgramChangeEvent = \
+            midi.ProgramChangeEvent(channel=channel, data=[value])
+        track.insert(0, ProgramChangeEvent)   
+        return track
     else:
+        # is drum
+        ProgramChangeEvent = \
+            midi.ProgramChangeEvent(channel=9)
+        track.insert(0, ProgramChangeEvent)
         for idx, event in enumerate(track):
-            if isinstance(event, midi.ProgramChangeEvent):
+            if isinstance(event, midi.NoteEvent):
                 track[idx].channel = 9
-            elif isinstance(event, midi.NoteOnEvent) or isinstance(event, midi.NoteOffEvent):
-                track[idx].channel = 9
-                track[idx].data[0] = value[1]
-
     return track
-    
-def demo_pattern(song):
-    midiname = "../track/" + song + ".mid"
-    pattern = read_midifile(midiname)
-    matrix = track_to_matrix(pattern[1])
-    matrix = sort_matrix(matrix)
-    beat = find_pattern(matrix)
-    track = matrix_to_track(beat)
-    
-    fragement = midi.Pattern(resolution=pattern.resolution, format=pattern.format)
-    fragement.append(pattern[0])
-    fragement.append(track)
-    save_midfile(fragement, "../data/"+song+".mid")
+
+def get_note(track):
+    """
+    截取Note开始的Events
+    返回一段Track
+    """
+    start_idx = len(track)
+    for idx, event in enumerate(track):
+        if isinstance(event, midi.NoteEvent):
+            start_idx = idx
+            break
+    sub_track = midi.Track()
+    sub_track = track[start_idx:]
+    return sub_track
+
+def set_note(track, notes):
+    """
+    调用这个方法的track本身应该没有Note
+    """
+    track = track + notes
+    return track
+
+# ------------------------Private Method Here------------------ #
+
+def _get_tempo(track):
+    '''
+    遍历track, 通过midi.SetTempoEvent得到tempo
+    '''
+    for event in track:
+        if isinstance(event, midi.SetTempoEvent): 
+            return event.get_bpm()
+    return 0 # 当前Track没有SetTempoEvent
+
+def _get_time_signature(track):
+    """
+    遍历track, 通过midi.TimeSignatureEvent得到time signature
+    """
+    for event in track:
+        if isinstance(event, midi.TimeSignatureEvent):
+            return event.data
+    return 0 # 当前Track没有TimeSignatureEvent
+
+def _set_tempo(track, value):
+    """
+    设置一个自己写的Track的Tempo
+    """
+    SetTempoEvent = midi.SetTempoEvent(bpm=value)
+    track.insert(0, SetTempoEvent)
+    return track
+
+def _set_time_signature(track, data):
+    """
+    设置一个自己写的Track的time signature
+    """
+    TimeSignatureEvent = midi.TimeSignatureEvent(data=data)
+    track.insert(0, TimeSignatureEvent)
+    return track
+
+def demo_pattern():
+    return "sbpp"
 
 if __name__ == '__main__':
-    #song = sys.argv[1]
-    song = 'Stan_9_drum'
-    demo_pattern(song)
+    demo_pattern()
