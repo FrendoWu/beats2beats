@@ -4,6 +4,37 @@ import numpy as np
 import pandas as pd 
 from util import _cal_var, _read_general_midi
 
+lowerBound = 21
+upperBound = 108
+
+def track_to_matrix(track, resolution):
+
+    step = resolution / 8
+    track = get_note(track)
+    statematrix = []
+    span = upperBound - lowerBound + 1 # 似乎是音高?
+    state = [0 for x in range(span)]
+    state[track[0].pitch-lowerBound] = 1
+
+    time = 0
+    for evt in track[1:]:
+        tick = evt.tick
+        while time + tick >= step:
+            statematrix.append(state.copy())
+            time = 0
+            tick = tick - step + time 
+        if isinstance(evt, midi.NoteEvent):
+            if (evt.pitch < lowerBound) or (evt.pitch >= upperBound):
+                pass
+                # print "Note {} at time {} out of bounds (ignoring)".format(evt.pitch, time)
+            else:
+                if isinstance(evt, midi.NoteOffEvent) or evt.velocity == 0:
+                    state[evt.pitch-lowerBound] = 0
+                else:
+                    state[evt.pitch-lowerBound] = 1
+            time = time + tick
+    return statematrix
+
 def get_program_drum(track):
     '''
     从打击乐track中提取乐器表
@@ -32,40 +63,40 @@ def get_channel_program(track):
                     ": " + program[idx.index(event.data[0])])
             return [event.channel, event.data[0]]
 
-def track_to_matrix(track):
-    """
-    把single track变为一个[[time,frequence,intensity],[...]...]的矩阵
-    #添加了tempo,channel,program => [time,frequence,intensity, tempo, channel, program]
-    """
-    if isinstance(track, midi.Track):
-        pass
-    else:
-        print("Input not a midi.Track!")
-        exit
+# def track_to_matrix(track):
+#     """
+#     把single track变为一个[[time,frequence,intensity],[...]...]的矩阵
+#     #添加了tempo,channel,program => [time,frequence,intensity, tempo, channel, program]
+#     """
+#     if isinstance(track, midi.Track):
+#         pass
+#     else:
+#         print("Input not a midi.Track!")
+#         exit
     
-    channel, program = get_channel_program(track)
-    tempo = _get_tempo(track)
-    outputs = []
-    time = 0
-    for event in track:
-        output = []
-        #channel==9时，frequency无效。
-        if isinstance(event, midi.NoteOnEvent) and event.data[1] > 0:
-            # True NoteOn Event
-            time = time + event.tick
-            output = [time, event.data[0], event.data[1], tempo, channel, program]
-            if channel == 9: output[-1] = event.data[0]
-            outputs.append(output)
+#     channel, program = get_channel_program(track)
+#     tempo = _get_tempo(track)
+#     outputs = []
+#     time = 0
+#     for event in track:
+#         output = []
+#         #channel==9时，frequency无效。
+#         if isinstance(event, midi.NoteOnEvent) and event.data[1] > 0:
+#             # True NoteOn Event
+#             time = time + event.tick
+#             output = [time, event.data[0], event.data[1], tempo, channel, program]
+#             if channel == 9: output[-1] = event.data[0]
+#             outputs.append(output)
 
-        elif isinstance(event, midi.NoteOffEvent) or \
-            (isinstance(event, midi.NoteOnEvent) and event.data[1] == 0):
-            # True NoteOff Event
-            time = time + event.tick
-            output = [time, event.data[0], 0, tempo, channel, program]
-            if channel == 9: output[-1] = event.data[0]
-            outputs.append(output)
+#         elif isinstance(event, midi.NoteOffEvent) or \
+#             (isinstance(event, midi.NoteOnEvent) and event.data[1] == 0):
+#             # True NoteOff Event
+#             time = time + event.tick
+#             output = [time, event.data[0], 0, tempo, channel, program]
+#             if channel == 9: output[-1] = event.data[0]
+#             outputs.append(output)
             
-    return outputs
+#     return outputs
 
 def matrix_to_track(matrix):
     """
@@ -208,6 +239,12 @@ def _set_time_signature(track, data):
     return track
 
 def demo_pattern():
+    pat = midi.read_midifile("../track/Stan_1_Violin.mid")
+    resolution = pat.resolution
+    track = pat[1]
+    mat = track_to_matrix(track, resolution)
+    print(len(mat[0]))
+    np.savetxt("./state_matrix.txt", np.array(mat))
     return "sbpp"
 
 if __name__ == '__main__':
